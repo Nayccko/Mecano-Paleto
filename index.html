@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mécano Paleto — Employés</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+  /* LOADING */
+  #loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: #64748b; font-size: 0.9rem; }
+
+  /* LOGIN */
+  #login-page { display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .login-card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 380px; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+  .login-logo { text-align: center; margin-bottom: 24px; }
+  .login-logo .icon { font-size: 2.6rem; }
+  .login-logo h1 { font-size: 1.3rem; font-weight: 700; color: #f1f5f9; margin-top: 8px; }
+  .login-logo p { font-size: 0.82rem; color: #64748b; margin-top: 3px; }
+  .login-field { margin-bottom: 14px; }
+  .login-field label { display: block; font-size: 0.78rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .login-field input { width: 100%; padding: 10px 13px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 0.92rem; outline: none; transition: border 0.2s; }
+  .login-field input:focus { border-color: #3b82f6; }
+  .login-field input.error { border-color: #ef4444; }
+  .login-error { font-size: 0.8rem; color: #f87171; margin-top: 10px; text-align: center; min-height: 18px; }
+  .btn-login { width: 100%; padding: 11px; border-radius: 9px; border: none; background: #2563eb; color: white; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 18px; transition: background 0.2s; }
+  .btn-login:hover { background: #1d4ed8; }
+
+  /* APP */
+  #app-page { display: none; padding: 32px 24px; }
+  .topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .topbar-left h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin-bottom: 3px; }
+  .topbar-left p { font-size: 0.84rem; color: #64748b; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .user-badge { display: flex; align-items: center; gap: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; }
+  .role-pill { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .role-pill.admin  { background: #1e3a5f; color: #60a5fa; border: 1px solid #1d4ed8; }
+  .role-pill.viewer { background: #1c2a1e; color: #86efac; border: 1px solid #166534; }
+  .btn-topbar { padding: 7px 14px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: #94a3b8; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+  .btn-topbar:hover { border-color: #64748b; color: #e2e8f0; }
+  .btn-add { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 9px; background: #2563eb; color: white; border: none; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-add:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+  /* SYNC BADGE */
+  .sync-badge { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #22c55e; background: #14532d22; border: 1px solid #166534; border-radius: 6px; padding: 4px 10px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* STATS */
+  .stats { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px 20px; min-width: 130px; }
+  .stat-num { font-size: 1.6rem; font-weight: 700; color: #f1f5f9; }
+  .stat-label { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+  .stat-card.green .stat-num { color: #86efac; }
+  .stat-card.orange .stat-num { color: #fdba74; }
+
+  /* CONTROLS */
+  .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .search-box { flex: 1; min-width: 200px; padding: 9px 14px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 0.9rem; outline: none; transition: border 0.2s; }
+  .search-box:focus { border-color: #3b82f6; }
+  .filter-btn { padding: 8px 15px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #94a3b8; font-size: 0.84rem; cursor: pointer; transition: all 0.2s; }
+  .filter-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+  .filter-btn:hover:not(.active) { border-color: #64748b; color: #e2e8f0; }
+  .count { margin-left: auto; font-size: 0.82rem; color: #475569; white-space: nowrap; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #1e293b; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  thead { position: sticky; top: 0; z-index: 10; }
+  th { background: #1e293b; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.07em; padding: 13px 16px; text-align: left; border-bottom: 1px solid #334155; cursor: pointer; user-select: none; white-space: nowrap; }
+  th:hover { color: #e2e8f0; }
+  th.sorted { color: #60a5fa; }
+  th.no-sort { cursor: default; }
+  th.no-sort:hover { color: #94a3b8; }
+  tbody tr { border-bottom: 1px solid #172033; transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #1a2640; }
+  td { padding: 11px 16px; vertical-align: middle; }
+  .num { color: #334155; font-size: 0.78rem; width: 40px; }
+  .name-cell { font-weight: 500; color: #f1f5f9; }
+  .badge { display: inline-block; padding: 3px 11px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+  .badge.ok      { background: #14532d; color: #86efac; border: 1px solid #166534; }
+  .badge.pending { background: #431407; color: #fdba74; border: 1px solid #9a3412; }
+  .link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 7px; background: #0f3460; color: #60a5fa; text-decoration: none; font-size: 0.82rem; border: 1px solid #1d4ed8; transition: all 0.2s; white-space: nowrap; }
+  .link-btn:hover { background: #1e40af; color: #bfdbfe; }
+  .dash { color: #334155; }
+  .empty { text-align: center; padding: 50px; color: #475569; }
+  .actions { display: flex; gap: 6px; }
+  .btn-edit, .btn-delete { padding: 5px 11px; border-radius: 6px; border: none; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-edit   { background: #1e3a5f; color: #60a5fa; border: 1px solid #1d4ed8; }
+  .btn-edit:hover { background: #1e40af; }
+  .btn-delete { background: #3b1a1a; color: #f87171; border: 1px solid #7f1d1d; }
+  .btn-delete:hover { background: #7f1d1d; }
+
+  /* MODALS */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 28px 28px 24px; width: 100%; max-width: 480px; box-shadow: 0 25px 60px rgba(0,0,0,0.5); animation: pop 0.2s ease; }
+  @keyframes pop { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal h2 { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 20px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .field input, .field select { width: 100%; padding: 9px 13px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 0.9rem; outline: none; transition: border 0.2s; }
+  .field input:focus, .field select:focus { border-color: #3b82f6; }
+  .field input.error { border-color: #ef4444; }
+  .err-msg { font-size: 0.78rem; color: #f87171; margin-top: 5px; display: none; }
+  .err-msg.show { display: block; }
+  .hint { font-size: 0.76rem; color: #475569; margin-top: 5px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+  .btn-cancel { padding: 9px 18px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: #94a3b8; font-size: 0.88rem; cursor: pointer; transition: all 0.2s; }
+  .btn-cancel:hover { border-color: #64748b; color: #e2e8f0; }
+  .btn-save { padding: 9px 22px; border-radius: 8px; border: none; background: #2563eb; color: white; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-save:hover { background: #1d4ed8; }
+  .btn-save:disabled { background: #1e3a5f; color: #475569; cursor: not-allowed; }
+
+  /* CONFIRM */
+  .confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 110; align-items: center; justify-content: center; padding: 20px; }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box { background: #1e293b; border: 1px solid #7f1d1d; border-radius: 12px; padding: 28px 28px 24px; max-width: 360px; width: 100%; text-align: center; animation: pop 0.18s ease; }
+  .confirm-box .icon { font-size: 2rem; margin-bottom: 12px; }
+  .confirm-box p { color: #e2e8f0; font-size: 0.95rem; margin-bottom: 20px; line-height: 1.5; }
+  .confirm-box strong { color: #f87171; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+  .btn-confirm-del { padding: 9px 20px; border-radius: 8px; border: none; background: #dc2626; color: white; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+  .btn-confirm-del:hover { background: #b91c1c; }
+
+  /* USER MANAGER */
+  .divider { height: 1px; background: #334155; margin: 18px 0; }
+  .user-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #1e293b; }
+  .user-row:last-child { border-bottom: none; }
+  .user-info { flex: 1; }
+  .user-info .uname { font-weight: 600; color: #f1f5f9; font-size: 0.9rem; }
+  .user-info .urole { font-size: 0.75rem; color: #64748b; }
+  .btn-del-user { padding: 4px 10px; border-radius: 6px; border: 1px solid #7f1d1d; background: #3b1a1a; color: #f87171; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+  .btn-del-user:hover { background: #7f1d1d; }
+  .btn-del-user:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 20px; font-size: 0.88rem; color: #e2e8f0; box-shadow: 0 8px 30px rgba(0,0,0,0.4); transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 200; pointer-events: none; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: #166534; color: #86efac; }
+  .toast.danger  { border-color: #7f1d1d; color: #f87171; }
+  .toast.info    { border-color: #1d4ed8; color: #93c5fd; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-text">Connexion à la base de données…</div>
+</div>
+
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">🔧</div>
+      <h1>Mécano Paleto</h1>
+      <p>Connectez-vous pour accéder à la liste</p>
+    </div>
+    <div class="login-field">
+      <label>Identifiant</label>
+      <input type="text" id="login-username" placeholder="Votre identifiant" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Mot de passe</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn-login" onclick="doLogin()">Se connecter →</button>
+  </div>
+</div>
+
+<div id="app-page">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>🔧 Mécano Paleto</h1>
+      <p>Liste des employés mécaniciens · Paleto Bay</p>
+    </div>
+    <div class="topbar-right">
+      <div class="sync-badge"><div class="sync-dot"></div> En direct</div>
+      <div class="user-badge">
+        <span id="topbar-username">—</span>
+        <span class="role-pill" id="topbar-role">—</span>
+      </div>
+      <button class="btn-topbar" id="btn-manage-users" onclick="openUserManager()" style="display:none">⚙️ Gérer les accès</button>
+      <button class="btn-add" id="btn-add-emp" onclick="openEmpModal()" style="display:none">＋ Ajouter un employé</button>
+      <button class="btn-topbar" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">Employés total</div></div>
+    <div class="stat-card green"><div class="stat-num" id="s-ok">—</div><div class="stat-label">Contrats signés</div></div>
+    <div class="stat-card orange"><div class="stat-num" id="s-pending">—</div><div class="stat-label">En attente</div></div>
+  </div>
+
+  <div class="controls">
+    <input class="search-box" type="text" id="search" placeholder="🔍  Rechercher un employé…" oninput="render()">
+    <button class="filter-btn active" id="btn-all" onclick="setFilter('all')">Tous</button>
+    <button class="filter-btn" id="btn-ok" onclick="setFilter('ok')">✓ Contrat OK</button>
+    <button class="filter-btn" id="btn-pending" onclick="setFilter('pending')">⏳ En attente</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="num no-sort">#</th>
+          <th onclick="sortTable('name')" id="th-name">Nom ↕</th>
+          <th onclick="sortTable('status')" id="th-status">Statut contrat ↕</th>
+          <th class="no-sort">Lien document</th>
+          <th class="no-sort" id="th-actions" style="display:none">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- EMPLOYEE MODAL -->
+<div class="overlay" id="emp-overlay" onclick="if(event.target===this)closeEmpModal()">
+  <div class="modal">
+    <h2 id="emp-modal-title">➕ Nouvel employé</h2>
+    <div class="field">
+      <label>Prénom *</label>
+      <input type="text" id="inp-prenom" placeholder="Ex : Marco" autocomplete="off">
+      <div class="err-msg" id="err-prenom">Le prénom est requis.</div>
+    </div>
+    <div class="field">
+      <label>Nom de famille *</label>
+      <input type="text" id="inp-nom" placeholder="Ex : Suarez" autocomplete="off">
+      <div class="err-msg" id="err-nom">Le nom de famille est requis.</div>
+    </div>
+    <div class="field">
+      <label>Lien contrat <span style="color:#475569;font-weight:400;text-transform:none;font-size:0.75rem">(optionnel)</span></label>
+      <input type="url" id="inp-url" placeholder="https://docs.google.com/…">
+      <div class="err-msg" id="err-url">L'URL doit commencer par https://</div>
+      <div class="hint">Laissez vide si le contrat n'est pas encore disponible.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEmpModal()">Annuler</button>
+      <button class="btn-save" id="btn-save-emp" onclick="saveEmployee()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="icon">🗑️</div>
+    <p>Supprimer <strong id="del-name"></strong> de la liste ?<br><span style="font-size:0.82rem;color:#64748b">Cette action est irréversible.</span></p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">Annuler</button>
+      <button class="btn-confirm-del" onclick="confirmDeleteEmp()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- USER MANAGER -->
+<div class="overlay" id="user-overlay" onclick="if(event.target===this)closeUserManager()">
+  <div class="modal" style="max-width:520px">
+    <h2>⚙️ Gestion des accès</h2>
+    <div id="user-list"></div>
+    <div class="divider"></div>
+    <h2 style="font-size:0.95rem;margin-bottom:16px">➕ Créer un compte</h2>
+    <div class="field">
+      <label>Identifiant *</label>
+      <input type="text" id="nu-login" placeholder="Ex : leon.cavia" autocomplete="off">
+      <div class="err-msg" id="err-nu-login">Identifiant requis ou déjà utilisé.</div>
+    </div>
+    <div class="field">
+      <label>Mot de passe *</label>
+      <input type="password" id="nu-pass" placeholder="Min. 4 caractères">
+      <div class="err-msg" id="err-nu-pass">Mot de passe requis (min. 4 caractères).</div>
+    </div>
+    <div class="field">
+      <label>Rôle</label>
+      <select id="nu-role">
+        <option value="viewer">👁️ Lecteur (voit seulement)</option>
+        <option value="admin">🔑 Admin (peut modifier)</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeUserManager()">Fermer</button>
+      <button class="btn-save" onclick="addUser()">Créer le compte</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── FIREBASE CONFIG ───────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAvwY8FPmncK4LeCDEd9yVLJ-W1V1-4D-4",
+  authDomain: "mecano-paleto.firebaseapp.com",
+  databaseURL: "https://mecano-paleto-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "mecano-paleto",
+  storageBucket: "mecano-paleto.firebasestorage.app",
+  messagingSenderId: "698904830555",
+  appId: "1:698904830555:web:77680f7bd091154d4e157e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── STATE ─────────────────────────────────────────
+let employees   = [];
+let accounts    = [];
+let currentUser = null;
+let editingEmpId  = null;
+let deletingEmpId = null;
+let filter  = 'all';
+let sortKey = 'name';
+let sortDir = 1;
+
+// ── DEFAULT DATA ──────────────────────────────────
+const DEFAULT_EMPLOYEES = [
+  { id:'e1',  name:"Sergio Ortega Vagas", url:"https://docs.google.com/document/d/1dqN9hSmGpbrNsi06KT1KYV3c1bHqGfPT-fc3DaHftiQ/edit?tab=t.0" },
+  { id:'e2',  name:"Leon Cavia",          url:"https://docs.google.com/document/d/1XoBb_6wqvMLUC1lKtORhoZNiT5Sh14DkhUQrqpp6DIM/edit?tab=t.0" },
+  { id:'e3',  name:"Yannis Bobiny",       url:"https://docs.google.com/document/d/1W_bAocDd1dS8X_DqW8dMCfVo2XQJU5-q5qQcZWYiN_I/edit?tab=t.0" },
+  { id:'e4',  name:"Tonton Amar",         url:"https://docs.google.com/document/d/1eMe5HP719awWvGs_G8pyxLr67ZeOFfsS5DIInWAx8QM/edit?usp=sharing" },
+  { id:'e5',  name:"Vito Columbo Torres", url:"https://docs.google.com/document/d/1kw7Un3BIsvIzZP7ZSSypUSTmWITBaFpww3naN84E8OI/edit?usp=sharing" },
+  { id:'e6',  name:"Marco Suarez",        url:"https://docs.google.com/document/d/1-iJRnlVFWQov3BFKoOtBlYAW9M12O_DxRYgrqiGcSjo/edit?tab=t.0" },
+  { id:'e7',  name:"Jess Bratz",          url:"https://docs.google.com/document/d/12mzhTRxWcOVkI7O2ih1441K-qD2mEFhybBRsmjFfwZk/edit?pli=1&tab=t.0" },
+  { id:'e8',  name:"Dereck",              url:null },
+  { id:'e9',  name:"Ali",                 url:null },
+  { id:'e10', name:"Varga Mas",           url:"ok" },
+  { id:'e11', name:"Liam Rayes",          url:"https://docs.google.com/document/d/1q5t47Mj0l5NXZenYp1ZxvJGsfLtk_eshR7vugVDfi0k/edit?usp=sharing" },
+  { id:'e12', name:"Flo Cary",            url:"https://docs.google.com/document/d/1NqHVy2PHYMj0y1vkJIGzsyITdYA4F9FbkHx3nm1whOw/edit?usp=sharing" },
+  { id:'e13', name:"Tyron Varn",          url:"https://docs.google.com/document/d/1lhylV7k9pPD1D-6GNboOG7eCMAlvp7wJmnT6XDzOaJU/edit?usp=sharing" },
+];
+
+const DEFAULT_ACCOUNTS = [
+  { id:'u1', username:'admin',        password:'paleto2024', role:'admin'  },
+  { id:'u2', username:'leon.cavia',   password:'leon123',    role:'viewer' },
+  { id:'u3', username:'marco.suarez', password:'marco123',   role:'viewer' },
+];
+
+// ── BOOT ──────────────────────────────────────────
+async function boot() {
+  try {
+    // Load or seed employees
+    const empSnap = await get(ref(db, 'employees'));
+    if (empSnap.exists()) {
+      const data = empSnap.val();
+      employees = Object.values(data);
+    } else {
+      for (const e of DEFAULT_EMPLOYEES) await set(ref(db, `employees/${e.id}`), e);
+      employees = [...DEFAULT_EMPLOYEES];
+    }
+
+    // Load or seed accounts
+    const accSnap = await get(ref(db, 'accounts'));
+    if (accSnap.exists()) {
+      accounts = Object.values(accSnap.val());
+    } else {
+      for (const a of DEFAULT_ACCOUNTS) await set(ref(db, `accounts/${a.id}`), a);
+      accounts = [...DEFAULT_ACCOUNTS];
+    }
+
+    // Listen for real-time changes
+    onValue(ref(db, 'employees'), snap => {
+      employees = snap.exists() ? Object.values(snap.val()) : [];
+      if (currentUser) render();
+    });
+    onValue(ref(db, 'accounts'), snap => {
+      accounts = snap.exists() ? Object.values(snap.val()) : [];
+      if (document.getElementById('user-overlay').classList.contains('open')) renderUserList();
+    });
+
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('login-page').style.display = 'flex';
+    setTimeout(() => document.getElementById('login-username').focus(), 100);
+
+  } catch(e) {
+    document.querySelector('.loading-text').textContent = '❌ Erreur de connexion. Vérifiez votre connexion internet.';
+    console.error(e);
+  }
+}
+
+// ── AUTH ──────────────────────────────────────────
+window.doLogin = function() {
+  const u = document.getElementById('login-username').value.trim();
+  const p = document.getElementById('login-password').value;
+  const acc = accounts.find(a => a.username === u && a.password === p);
+  if (!acc) {
+    document.getElementById('login-error').textContent = '❌ Identifiant ou mot de passe incorrect.';
+    document.getElementById('login-password').classList.add('error');
+    return;
+  }
+  currentUser = { username: acc.username, role: acc.role };
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app-page').style.display = 'block';
+  applyRole();
+  render();
+  toast(`👋 Bienvenue, ${currentUser.username} !`, 'info');
+};
+
+window.doLogout = function() {
+  currentUser = null;
+  document.getElementById('app-page').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('login-password').classList.remove('error');
+};
+
+function applyRole() {
+  const isAdmin = currentUser.role === 'admin';
+  document.getElementById('topbar-username').textContent = currentUser.username;
+  const rp = document.getElementById('topbar-role');
+  rp.textContent = isAdmin ? 'Admin' : 'Lecteur';
+  rp.className = 'role-pill ' + (isAdmin ? 'admin' : 'viewer');
+  document.getElementById('btn-add-emp').style.display      = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('btn-manage-users').style.display = isAdmin ? 'inline-block' : 'none';
+  document.getElementById('th-actions').style.display       = isAdmin ? '' : 'none';
+}
+
+// ── USER MANAGER ──────────────────────────────────
+window.openUserManager = function() {
+  renderUserList();
+  document.getElementById('nu-login').value = '';
+  document.getElementById('nu-pass').value  = '';
+  document.getElementById('nu-role').value  = 'viewer';
+  clearUserErrors();
+  document.getElementById('user-overlay').classList.add('open');
+};
+window.closeUserManager = function() { document.getElementById('user-overlay').classList.remove('open'); };
+
+function renderUserList() {
+  document.getElementById('user-list').innerHTML = accounts.map(a => `
+    <div class="user-row">
+      <div class="user-info">
+        <div class="uname">${a.username}</div>
+        <div class="urole">${a.role === 'admin' ? '🔑 Admin' : '👁️ Lecteur'}</div>
+      </div>
+      <span class="role-pill ${a.role}" style="font-size:0.7rem;padding:2px 8px">${a.role}</span>
+      <button class="btn-del-user" onclick="removeUser('${a.id}')"
+        ${a.username === currentUser.username ? 'disabled title="Impossible de supprimer votre propre compte"' : ''}>
+        Supprimer
+      </button>
+    </div>`).join('');
+}
+
+function clearUserErrors() {
+  ['nu-login','nu-pass'].forEach(f => document.getElementById('err-'+f).classList.remove('show'));
+}
+
+window.addUser = async function() {
+  clearUserErrors();
+  const login = document.getElementById('nu-login').value.trim();
+  const pass  = document.getElementById('nu-pass').value;
+  const role  = document.getElementById('nu-role').value;
+  let valid = true;
+  if (!login || accounts.find(a => a.username === login)) { document.getElementById('err-nu-login').classList.add('show'); valid = false; }
+  if (!pass || pass.length < 4) { document.getElementById('err-nu-pass').classList.add('show'); valid = false; }
+  if (!valid) return;
+  const id = 'u' + Date.now();
+  const newAcc = { id, username: login, password: pass, role };
+  await set(ref(db, `accounts/${id}`), newAcc);
+  document.getElementById('nu-login').value = '';
+  document.getElementById('nu-pass').value  = '';
+  toast(`✅ Compte « ${login} » créé.`);
+};
+
+window.removeUser = async function(id) {
+  const acc = accounts.find(a => a.id === id);
+  if (!acc || acc.username === currentUser.username) return;
+  await remove(ref(db, `accounts/${id}`));
+  toast(`🗑️ Compte « ${acc.username} » supprimé.`, 'danger');
+};
+
+// ── EMPLOYEE CRUD ─────────────────────────────────
+window.openEmpModal = function(id = null) {
+  editingEmpId = id;
+  clearEmpErrors();
+  if (id !== null) {
+    const e = employees.find(e => e.id === id);
+    const parts = e.name.trim().split(' ');
+    document.getElementById('inp-prenom').value = parts[0] || '';
+    document.getElementById('inp-nom').value    = parts.slice(1).join(' ') || '';
+    document.getElementById('inp-url').value    = (e.url && e.url !== 'ok') ? e.url : '';
+    document.getElementById('emp-modal-title').textContent = "✏️ Modifier l'employé";
+  } else {
+    document.getElementById('inp-prenom').value = '';
+    document.getElementById('inp-nom').value    = '';
+    document.getElementById('inp-url').value    = '';
+    document.getElementById('emp-modal-title').textContent = '➕ Nouvel employé';
+  }
+  document.getElementById('emp-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('inp-prenom').focus(), 120);
+};
+window.closeEmpModal = function() { document.getElementById('emp-overlay').classList.remove('open'); editingEmpId = null; };
+
+function clearEmpErrors() {
+  ['prenom','nom','url'].forEach(f => {
+    document.getElementById('inp-'+f).classList.remove('error');
+    document.getElementById('err-'+f).classList.remove('show');
+  });
+}
+
+window.saveEmployee = async function() {
+  clearEmpErrors();
+  const prenom = document.getElementById('inp-prenom').value.trim();
+  const nom    = document.getElementById('inp-nom').value.trim();
+  const urlVal = document.getElementById('inp-url').value.trim();
+  let valid = true;
+  if (!prenom) { document.getElementById('inp-prenom').classList.add('error'); document.getElementById('err-prenom').classList.add('show'); valid = false; }
+  if (!nom)    { document.getElementById('inp-nom').classList.add('error');    document.getElementById('err-nom').classList.add('show');    valid = false; }
+  if (urlVal && !urlVal.startsWith('http')) { document.getElementById('inp-url').classList.add('error'); document.getElementById('err-url').classList.add('show'); valid = false; }
+  if (!valid) return;
+
+  const btn = document.getElementById('btn-save-emp');
+  btn.disabled = true;
+  const fullName = prenom + ' ' + nom;
+  const finalUrl = urlVal || null;
+  const id = editingEmpId || ('e' + Date.now());
+  await set(ref(db, `employees/${id}`), { id, name: fullName, url: finalUrl });
+  toast(editingEmpId ? `✏️ ${fullName} mis à jour.` : `✅ ${fullName} ajouté.`);
+  btn.disabled = false;
+  closeEmpModal();
+};
+
+window.askDeleteEmp = function(id) {
+  deletingEmpId = id;
+  document.getElementById('del-name').textContent = employees.find(e => e.id === id).name;
+  document.getElementById('confirm-overlay').classList.add('open');
+};
+window.closeConfirm = function() { document.getElementById('confirm-overlay').classList.remove('open'); deletingEmpId = null; };
+
+window.confirmDeleteEmp = async function() {
+  const emp = employees.find(e => e.id === deletingEmpId);
+  await remove(ref(db, `employees/${deletingEmpId}`));
+  closeConfirm();
+  toast(`🗑️ ${emp.name} supprimé.`, 'danger');
+};
+
+// ── FILTER / SORT / RENDER ────────────────────────
+function getStatus(e) { return e.url ? 'ok' : 'pending'; }
+
+window.setFilter = function(f) {
+  filter = f;
+  ['all','ok','pending'].forEach(k => document.getElementById('btn-'+k).classList.toggle('active', k === f));
+  render();
+};
+
+window.sortTable = function(key) {
+  if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+  ['name','status'].forEach(k => {
+    const el = document.getElementById('th-'+k);
+    const label = k === 'name' ? 'Nom' : 'Statut contrat';
+    el.textContent = label + (k === sortKey ? (sortDir === 1 ? ' ▲' : ' ▼') : ' ↕');
+    el.classList.toggle('sorted', k === sortKey);
+  });
+  render();
+};
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let list = employees.filter(e =>
+    e.name.toLowerCase().includes(q) && (filter === 'all' || getStatus(e) === filter)
+  );
+  list.sort((a, b) => {
+    if (sortKey === 'name') return sortDir * a.name.localeCompare(b.name, 'fr');
+    return sortDir * getStatus(a).localeCompare(getStatus(b));
+  });
+
+  const total   = employees.length;
+  const okCount = employees.filter(e => getStatus(e) === 'ok').length;
+  document.getElementById('s-total').textContent   = total;
+  document.getElementById('s-ok').textContent      = okCount;
+  document.getElementById('s-pending').textContent = total - okCount;
+  document.getElementById('count').textContent     = `${list.length} / ${total} affiché${list.length > 1 ? 's' : ''}`;
+
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const tbody   = document.getElementById('body');
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="${isAdmin ? 5 : 4}" class="empty">Aucun résultat trouvé.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map((e, i) => {
+    const status = getStatus(e);
+    const badge  = status === 'ok'
+      ? `<span class="badge ok">✓ Signé</span>`
+      : `<span class="badge pending">⏳ En attente</span>`;
+
+    let link = `<span class="dash">—</span>`;
+    if (e.url && e.url !== 'ok') link = `<a class="link-btn" href="${e.url}" target="_blank">📄 Voir le contrat</a>`;
+    else if (e.url === 'ok')     link = `<span style="color:#4b5563;font-size:0.82rem">Confirmé</span>`;
+
+    const actionsTd = isAdmin ? `<td><div class="actions">
+      <button class="btn-edit"   onclick="openEmpModal('${e.id}')">✏️ Modifier</button>
+      <button class="btn-delete" onclick="askDeleteEmp('${e.id}')">🗑️ Supprimer</button>
+    </div></td>` : '';
+
+    return `<tr>
+      <td class="num">${i + 1}</td>
+      <td class="name-cell">${e.name}</td>
+      <td>${badge}</td>
+      <td>${link}</td>
+      ${actionsTd}
+    </tr>`;
+  }).join('');
+}
+
+// ── TOAST ─────────────────────────────────────────
+let toastTimer;
+window.toast = function(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+};
+function toast(msg, type) { window.toast(msg, type); }
+
+// ── KEYBOARD ──────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeEmpModal(); closeConfirm(); closeUserManager(); }
+  if (e.key === 'Enter' && document.getElementById('emp-overlay').classList.contains('open')) saveEmployee();
+});
+
+document.getElementById('search').addEventListener('input', render);
+
+boot();
+</script>
+</body>
+</html>
