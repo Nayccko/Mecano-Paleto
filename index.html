@@ -139,6 +139,14 @@
   .btn-del-user:hover { background: #7f1d1d; }
   .btn-del-user:disabled { opacity: 0.35; cursor: not-allowed; }
 
+  /* TABS LOGIN/REGISTER */
+  .auth-tabs { display: flex; margin-bottom: 24px; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
+  .auth-tab { flex: 1; padding: 9px; text-align: center; font-size: 0.85rem; font-weight: 600; cursor: pointer; background: #0f172a; color: #64748b; border: none; transition: all 0.2s; }
+  .auth-tab.active { background: #2563eb; color: white; }
+  .auth-panel { display: none; }
+  .auth-panel.active { display: block; }
+  .invite-hint { font-size: 0.76rem; color: #475569; margin-top: 5px; }
+
   /* TOAST */
   .toast { position: fixed; bottom: 28px; right: 28px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 20px; font-size: 0.88rem; color: #e2e8f0; box-shadow: 0 8px 30px rgba(0,0,0,0.4); transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 200; pointer-events: none; }
   .toast.show { transform: translateY(0); opacity: 1; }
@@ -159,18 +167,79 @@
     <div class="login-logo">
       <div class="icon">🔧</div>
       <h1>Mécano Paleto</h1>
-      <p>Connectez-vous pour accéder à la liste</p>
+      <p>Paleto Bay · Accès sécurisé</p>
     </div>
-    <div class="login-field">
-      <label>Identifiant</label>
-      <input type="text" id="login-username" placeholder="Votre identifiant" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Se connecter</button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Créer un compte</button>
     </div>
-    <div class="login-field">
-      <label>Mot de passe</label>
-      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="auth-panel active" id="panel-login">
+      <div class="login-field">
+        <label>Identifiant</label>
+        <input type="text" id="login-username" placeholder="Votre identifiant" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="login-field">
+        <label>Mot de passe</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button class="btn-login" onclick="doLogin()">Se connecter →</button>
     </div>
-    <div class="login-error" id="login-error"></div>
-    <button class="btn-login" onclick="doLogin()">Se connecter →</button>
+    <div class="auth-panel" id="panel-register">
+      <div class="login-field">
+        <label>Code d'invitation *</label>
+        <input type="text" id="reg-invite" placeholder="Code reçu par l'administrateur" autocomplete="off">
+        <div class="invite-hint">Demandez ce code à l'admin pour créer un compte.</div>
+      </div>
+      <div class="login-field">
+        <label>Identifiant *</label>
+        <input type="text" id="reg-username" placeholder="Ex : jean.dupont" autocomplete="off">
+      </div>
+      <div class="login-field">
+        <label>Mot de passe *</label>
+        <input type="password" id="reg-password" placeholder="Min. 4 caractères">
+      </div>
+      <div class="login-field">
+        <label>Confirmer le mot de passe *</label>
+        <input type="password" id="reg-password2" placeholder="Répétez le mot de passe">
+      </div>
+      <div class="login-error" id="register-error"></div>
+      <button class="btn-login" onclick="doRegister()">Créer mon compte →</button>
+    </div>
+  </div>
+</div>
+      </div>
+      <div class="login-field">
+        <label>Mot de passe</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button class="btn-login" onclick="doLogin()">Se connecter →</button>
+    </div>
+
+    <!-- REGISTER PANEL -->
+    <div class="auth-panel" id="panel-register">
+      <div class="login-field">
+        <label>Code d'invitation *</label>
+        <input type="text" id="reg-invite" placeholder="Entrez le code reçu" autocomplete="off">
+        <div class="invite-hint">Ce code vous a été transmis par l'administrateur.</div>
+      </div>
+      <div class="login-field">
+        <label>Identifiant *</label>
+        <input type="text" id="reg-username" placeholder="Ex : jean.dupont" autocomplete="off">
+      </div>
+      <div class="login-field">
+        <label>Mot de passe *</label>
+        <input type="password" id="reg-password" placeholder="Min. 4 caractères">
+      </div>
+      <div class="login-field">
+        <label>Confirmer le mot de passe *</label>
+        <input type="password" id="reg-password2" placeholder="Répétez le mot de passe">
+      </div>
+      <div class="login-error" id="register-error"></div>
+      <button class="btn-login" onclick="doRegister()">Créer mon compte →</button>
+    </div>
+
   </div>
 </div>
 
@@ -267,6 +336,12 @@
     <h2>⚙️ Gestion des accès</h2>
     <div id="user-list"></div>
     <div class="divider"></div>
+    <h2 style="font-size:0.95rem;margin-bottom:10px">🔑 Code d'invitation</h2>
+    <div style="display:flex;gap:8px;margin-bottom:18px;align-items:center">
+      <input type="text" id="invite-code-input" style="flex:1;padding:9px 13px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.9rem;outline:none;" placeholder="Code actuel">
+      <button onclick="saveInviteCode()" style="padding:9px 16px;border-radius:8px;border:none;background:#2563eb;color:white;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">💾 Modifier</button>
+    </div>
+    <div class="divider"></div>
     <h2 style="font-size:0.95rem;margin-bottom:16px">➕ Créer un compte</h2>
     <div class="field">
       <label>Identifiant *</label>
@@ -349,6 +424,8 @@ const DEFAULT_ACCOUNTS = [
 // ── BOOT ──────────────────────────────────────────
 async function boot() {
   try {
+    await loadInviteCode();
+
     // Load or seed employees
     const empSnap = await get(ref(db, 'employees'));
     if (empSnap.exists()) {
@@ -387,6 +464,54 @@ async function boot() {
     console.error(e);
   }
 }
+
+// ── INVITE CODE (stored in Firebase) ────────────────
+// Admin can set/change the invite code via the user manager
+let inviteCode = 'PALETO2024'; // default, overridden from Firebase
+
+async function loadInviteCode() {
+  try {
+    const snap = await get(ref(db, 'config/inviteCode'));
+    if (snap.exists()) inviteCode = snap.val();
+    else await set(ref(db, 'config/inviteCode'), inviteCode);
+  } catch(e) {}
+}
+
+// ── TAB SWITCH ────────────────────────────────────────
+window.switchTab = function(tab) {
+  ['login','register'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+    document.getElementById('panel-'+t).classList.toggle('active', t === tab);
+  });
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('register-error').textContent = '';
+};
+
+// ── REGISTER ─────────────────────────────────────────
+window.doRegister = async function() {
+  const invite = document.getElementById('reg-invite').value.trim();
+  const username = document.getElementById('reg-username').value.trim().toLowerCase();
+  const pass = document.getElementById('reg-password').value;
+  const pass2 = document.getElementById('reg-password2').value;
+  const errEl = document.getElementById('register-error');
+  errEl.textContent = '';
+
+  if (invite !== inviteCode) { errEl.textContent = '❌ Code d\'invitation incorrect.'; return; }
+  if (!username || username.length < 3) { errEl.textContent = '❌ Identifiant trop court (min. 3 caractères).'; return; }
+  if (accounts.find(a => a.username === username)) { errEl.textContent = '❌ Cet identifiant est déjà utilisé.'; return; }
+  if (!pass || pass.length < 4) { errEl.textContent = '❌ Mot de passe trop court (min. 4 caractères).'; return; }
+  if (pass !== pass2) { errEl.textContent = '❌ Les mots de passe ne correspondent pas.'; return; }
+
+  const id = 'u' + Date.now();
+  await set(ref(db, 'accounts/' + id), { id, username, password: pass, role: 'viewer' });
+  document.getElementById('reg-invite').value = '';
+  document.getElementById('reg-username').value = '';
+  document.getElementById('reg-password').value = '';
+  document.getElementById('reg-password2').value = '';
+  switchTab('login');
+  document.getElementById('login-username').value = username;
+  toast('✅ Compte créé ! Vous pouvez vous connecter.', 'success');
+};
 
 // ── AUTH ──────────────────────────────────────────
 window.doLogin = function() {
@@ -433,6 +558,7 @@ window.openUserManager = function() {
   document.getElementById('nu-login').value = '';
   document.getElementById('nu-pass').value  = '';
   document.getElementById('nu-role').value  = 'viewer';
+  document.getElementById('invite-code-input').value = inviteCode;
   clearUserErrors();
   document.getElementById('user-overlay').classList.add('open');
 };
@@ -456,6 +582,14 @@ function renderUserList() {
 function clearUserErrors() {
   ['nu-login','nu-pass'].forEach(f => document.getElementById('err-'+f).classList.remove('show'));
 }
+
+window.saveInviteCode = async function() {
+  const val = document.getElementById('invite-code-input').value.trim();
+  if (!val || val.length < 4) { toast('❌ Code trop court (min. 4 caractères).', 'danger'); return; }
+  inviteCode = val;
+  await set(ref(db, 'config/inviteCode'), val);
+  toast('🔑 Code d\'invitation mis à jour.', 'success');
+};
 
 window.addUser = async function() {
   clearUserErrors();
