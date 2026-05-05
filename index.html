@@ -419,9 +419,9 @@ const DEFAULT_EMPLOYEES = [
 ];
 
 const DEFAULT_ACCOUNTS = [
-  { id:'u1', username:'admin',        password:'paleto2024', role:'admin'  },
-  { id:'u2', username:'leon.cavia',   password:'leon123',    role:'viewer' },
-  { id:'u3', username:'marco.suarez', password:'marco123',   role:'viewer' },
+  { id:'u1', username:'Nayccko',       password:'1$wcv97oVMhwKKgp', role:'admin'  },
+  { id:'u2', username:'leon.cavia',    password:'leon123',           role:'viewer' },
+  { id:'u3', username:'marco.suarez',  password:'marco123',          role:'viewer' },
 ];
 
 // ── BOOT ──────────────────────────────────────────
@@ -443,8 +443,16 @@ async function boot() {
     const accSnap = await get(ref(db, 'accounts'));
     if (accSnap.exists()) {
       accounts = Object.values(accSnap.val());
+      // If old 'admin' account still exists, remove it and ensure Nayccko is there
+      const hasOldAdmin = accounts.find(a => a.username === 'admin');
+      const hasNayccko  = accounts.find(a => a.username === 'Nayccko');
+      if (hasOldAdmin) await remove(ref(db, 'accounts/u1'));
+      if (!hasNayccko) await set(ref(db, 'accounts/u1'), DEFAULT_ACCOUNTS[0]);
+      // Reload after fix
+      const fresh = await get(ref(db, 'accounts'));
+      accounts = fresh.exists() ? Object.values(fresh.val()) : DEFAULT_ACCOUNTS;
     } else {
-      for (const a of DEFAULT_ACCOUNTS) await set(ref(db, `accounts/${a.id}`), a);
+      for (const a of DEFAULT_ACCOUNTS) await set(ref(db, 'accounts/' + a.id), a);
       accounts = [...DEFAULT_ACCOUNTS];
     }
 
