@@ -489,11 +489,12 @@ window.switchTab = function(tab) {
 
 // ── REGISTER ─────────────────────────────────────────
 window.doRegister = async function() {
-  const invite = document.getElementById('reg-invite').value.trim();
+  const invite   = document.getElementById('reg-invite').value.trim();
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
-  const pass = document.getElementById('reg-password').value;
-  const pass2 = document.getElementById('reg-password2').value;
-  const errEl = document.getElementById('register-error');
+  const pass     = document.getElementById('reg-password').value;
+  const pass2    = document.getElementById('reg-password2').value;
+  const errEl    = document.getElementById('register-error');
+  const btnEl    = document.querySelector('#panel-register .btn-login');
   errEl.textContent = '';
 
   if (invite !== inviteCode) { errEl.textContent = '❌ Code d\'invitation incorrect.'; return; }
@@ -502,15 +503,29 @@ window.doRegister = async function() {
   if (!pass || pass.length < 4) { errEl.textContent = '❌ Mot de passe trop court (min. 4 caractères).'; return; }
   if (pass !== pass2) { errEl.textContent = '❌ Les mots de passe ne correspondent pas.'; return; }
 
-  const id = 'u' + Date.now();
-  await set(ref(db, 'accounts/' + id), { id, username, password: pass, role: 'viewer' });
-  document.getElementById('reg-invite').value = '';
-  document.getElementById('reg-username').value = '';
-  document.getElementById('reg-password').value = '';
-  document.getElementById('reg-password2').value = '';
-  switchTab('login');
-  document.getElementById('login-username').value = username;
-  toast('✅ Compte créé ! Vous pouvez vous connecter.', 'success');
+  btnEl.disabled = true;
+  btnEl.textContent = 'Création en cours…';
+
+  try {
+    const id = 'u' + Date.now();
+    const newAcc = { id, username, password: pass, role: 'viewer' };
+    await set(ref(db, 'accounts/' + id), newAcc);
+    // Also update local accounts array immediately
+    accounts.push(newAcc);
+    document.getElementById('reg-invite').value   = '';
+    document.getElementById('reg-username').value = '';
+    document.getElementById('reg-password').value = '';
+    document.getElementById('reg-password2').value = '';
+    switchTab('login');
+    document.getElementById('login-username').value = username;
+    toast('✅ Compte créé ! Vous pouvez vous connecter.', 'success');
+  } catch(e) {
+    console.error('Register error:', e);
+    errEl.textContent = '❌ Erreur lors de la création : ' + e.message;
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = 'Créer mon compte →';
+  }
 };
 
 // ── AUTH ──────────────────────────────────────────
@@ -600,12 +615,19 @@ window.addUser = async function() {
   if (!login || accounts.find(a => a.username === login)) { document.getElementById('err-nu-login').classList.add('show'); valid = false; }
   if (!pass || pass.length < 4) { document.getElementById('err-nu-pass').classList.add('show'); valid = false; }
   if (!valid) return;
-  const id = 'u' + Date.now();
-  const newAcc = { id, username: login, password: pass, role };
-  await set(ref(db, `accounts/${id}`), newAcc);
-  document.getElementById('nu-login').value = '';
-  document.getElementById('nu-pass').value  = '';
-  toast(`✅ Compte « ${login} » créé.`);
+  try {
+    const id = 'u' + Date.now();
+    const newAcc = { id, username: login, password: pass, role };
+    await set(ref(db, 'accounts/' + id), newAcc);
+    accounts.push(newAcc);
+    document.getElementById('nu-login').value = '';
+    document.getElementById('nu-pass').value  = '';
+    renderUserList();
+    toast('✅ Compte « ' + login + ' » créé et sauvegardé.');
+  } catch(e) {
+    console.error('addUser error:', e);
+    toast('❌ Erreur Firebase : ' + e.message, 'danger');
+  }
 };
 
 window.removeUser = async function(id) {
