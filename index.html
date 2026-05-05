@@ -338,8 +338,11 @@
     <div class="divider"></div>
     <h2 style="font-size:0.95rem;margin-bottom:10px">🔑 Code d'invitation</h2>
     <div style="display:flex;gap:8px;margin-bottom:18px;align-items:center">
-      <input type="text" id="invite-code-input" style="flex:1;padding:9px 13px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.9rem;outline:none;" placeholder="Code actuel">
-      <button onclick="saveInviteCode()" style="padding:9px 16px;border-radius:8px;border:none;background:#2563eb;color:white;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">💾 Modifier</button>
+      <div style="flex:1">
+        <div id="invite-code-display" style="font-size:1.3rem;font-weight:700;color:#60a5fa;letter-spacing:0.15em;font-family:monospace;padding:8px 0;">—</div>
+        <div id="invite-code-timer" style="font-size:0.75rem;color:#475569;margin-top:2px;">Prochain changement dans…</div>
+      </div>
+      <button onclick="refreshInviteCode()" style="padding:9px 16px;border-radius:8px;border:none;background:#0f3460;color:#60a5fa;border:1px solid #1d4ed8;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔄 Regénérer</button>
     </div>
     <div class="divider"></div>
     <h2 style="font-size:0.95rem;margin-bottom:16px">➕ Créer un compte</h2>
@@ -465,16 +468,84 @@ async function boot() {
   }
 }
 
-// ── INVITE CODE (stored in Firebase) ────────────────
-// Admin can set/change the invite code via the user manager
-let inviteCode = 'PALETO2024'; // default, overridden from Firebase
+// ── INVITE CODE AUTO-ROTATE ──────────────────────────
+let inviteCode = '';
+let inviteTimer = null;
+
+// Generate a random 8-char alphanumeric code
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+// Returns ms until next full hour
+function msUntilNextHour() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(now.getHours() + 1, 0, 0, 0);
+  return next - now;
+}
+
+function formatCountdown(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return m + 'min ' + String(s).padStart(2,'0') + 's';
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('invite-code-timer');
+  if (!el) return;
+  const ms = msUntilNextHour();
+  el.textContent = 'Prochain changement dans ' + formatCountdown(ms);
+}
 
 async function loadInviteCode() {
   try {
-    const snap = await get(ref(db, 'config/inviteCode'));
-    if (snap.exists()) inviteCode = snap.val();
-    else await set(ref(db, 'config/inviteCode'), inviteCode);
-  } catch(e) {}
+    const snap = await get(ref(db, 'config/inviteCodeData'));
+    const now = Date.now();
+    const hourSlot = Math.floor(now / 3600000); // changes every hour
+
+    if (snap.exists()) {
+      const data = snap.val();
+      if (data.slot === hourSlot) {
+        inviteCode = data.code;
+      } else {
+        // Hour changed — generate new code
+        inviteCode = generateCode();
+        await set(ref(db, 'config/inviteCodeData'), { code: inviteCode, slot: hourSlot });
+      }
+    } else {
+      inviteCode = generateCode();
+      await set(ref(db, 'config/inviteCodeData'), { code: inviteCode, slot: hourSlot });
+    }
+
+    // Listen for real-time code changes (if admin regenerates)
+    onValue(ref(db, 'config/inviteCodeData'), snap => {
+      if (snap.exists()) {
+        inviteCode = snap.val().code;
+        const el = document.getElementById('invite-code-display');
+        if (el) el.textContent = inviteCode;
+      }
+    });
+
+    // Auto-rotate at the next full hour
+    scheduleNextRotation();
+  } catch(e) { console.error('loadInviteCode error', e); }
+}
+
+function scheduleNextRotation() {
+  const ms = msUntilNextHour();
+  clearTimeout(inviteTimer);
+  inviteTimer = setTimeout(async () => {
+    inviteCode = generateCode();
+    const slot = Math.floor(Date.now() / 3600000);
+    await set(ref(db, 'config/inviteCodeData'), { code: inviteCode, slot });
+    scheduleNextRotation();
+  }, ms);
+
+  // Update countdown every second
+  setInterval(updateTimerDisplay, 1000);
 }
 
 // ── TAB SWITCH ────────────────────────────────────────
@@ -573,7 +644,7 @@ window.openUserManager = function() {
   document.getElementById('nu-login').value = '';
   document.getElementById('nu-pass').value  = '';
   document.getElementById('nu-role').value  = 'viewer';
-  document.getElementById('invite-code-input').value = inviteCode;
+  const codeEl = document.getElementById('invite-code-display'); if(codeEl) codeEl.textContent = inviteCode; updateTimerDisplay();
   clearUserErrors();
   document.getElementById('user-overlay').classList.add('open');
 };
@@ -598,12 +669,16 @@ function clearUserErrors() {
   ['nu-login','nu-pass'].forEach(f => document.getElementById('err-'+f).classList.remove('show'));
 }
 
-window.saveInviteCode = async function() {
-  const val = document.getElementById('invite-code-input').value.trim();
-  if (!val || val.length < 4) { toast('❌ Code trop court (min. 4 caractères).', 'danger'); return; }
-  inviteCode = val;
-  await set(ref(db, 'config/inviteCode'), val);
-  toast('🔑 Code d\'invitation mis à jour.', 'success');
+window.refreshInviteCode = async function() {
+  try {
+    inviteCode = generateCode();
+    const slot = Math.floor(Date.now() / 3600000);
+    await set(ref(db, 'config/inviteCodeData'), { code: inviteCode, slot });
+    document.getElementById('invite-code-display').textContent = inviteCode;
+    toast('🔑 Nouveau code généré : ' + inviteCode, 'success');
+  } catch(e) {
+    toast('❌ Erreur : ' + e.message, 'danger');
+  }
 };
 
 window.addUser = async function() {
