@@ -147,6 +147,14 @@
   .auth-panel.active { display: block; }
   .invite-hint { font-size: 0.76rem; color: #475569; margin-top: 5px; }
 
+  /* HISTORY */
+  .history-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #1e293b; font-size: 0.85rem; }
+  .history-row:last-child { border-bottom: none; }
+  .history-user { font-weight: 600; color: #f1f5f9; min-width: 110px; }
+  .history-time { color: #64748b; font-size: 0.78rem; flex: 1; }
+  .history-role { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .history-empty { text-align: center; padding: 20px; color: #475569; font-size: 0.85rem; }
+
   /* TOAST */
   .toast { position: fixed; bottom: 28px; right: 28px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 20px; font-size: 0.88rem; color: #e2e8f0; box-shadow: 0 8px 30px rgba(0,0,0,0.4); transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 200; pointer-events: none; }
   .toast.show { transform: translateY(0); opacity: 1; }
@@ -256,6 +264,7 @@
         <span class="role-pill" id="topbar-role">—</span>
       </div>
       <button class="btn-topbar" id="btn-manage-users" onclick="openUserManager()" style="display:none">⚙️ Gérer les accès</button>
+      <button class="btn-topbar" id="btn-history" onclick="openHistory()" style="display:none">📋 Historique</button>
       <button class="btn-add" id="btn-add-emp" onclick="openEmpModal()" style="display:none">＋ Ajouter un employé</button>
       <button class="btn-topbar" onclick="doLogout()">Déconnexion</button>
     </div>
@@ -371,6 +380,20 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- HISTORY MODAL -->
+<div class="overlay" id="history-overlay" onclick="if(event.target===this)closeHistory()">
+  <div class="modal" style="max-width:560px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="margin:0">📋 Historique des connexions</h2>
+      <button onclick="clearHistory()" style="padding:5px 12px;border-radius:6px;border:1px solid #7f1d1d;background:#3b1a1a;color:#f87171;font-size:0.78rem;font-weight:600;cursor:pointer;">🗑️ Effacer</button>
+    </div>
+    <div id="history-list"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeHistory()">Fermer</button>
+    </div>
+  </div>
+</div>
 
 <!-- Firebase SDK -->
 <script type="module">
@@ -622,6 +645,7 @@ window.doLogin = function() {
   document.getElementById('app-page').style.display = 'block';
   applyRole();
   render();
+  logLogin(acc.username, acc.role);
   toast(`👋 Bienvenue, ${currentUser.username} !`, 'info');
 };
 
@@ -643,6 +667,7 @@ function applyRole() {
   rp.className = 'role-pill ' + (isAdmin ? 'admin' : 'viewer');
   document.getElementById('btn-add-emp').style.display      = isAdmin ? 'inline-flex' : 'none';
   document.getElementById('btn-manage-users').style.display = isAdmin ? 'inline-block' : 'none';
+  document.getElementById('btn-history').style.display      = isAdmin ? 'inline-block' : 'none';
   document.getElementById('th-actions').style.display       = isAdmin ? '' : 'none';
 }
 
@@ -873,6 +898,44 @@ document.addEventListener('keydown', e => {
 });
 
 document.getElementById('search').addEventListener('input', render);
+
+// ── HISTORY ───────────────────────────────────────────
+window.openHistory = async function() {
+  document.getElementById('history-overlay').classList.add('open');
+  const snap = await get(ref(db, 'loginHistory'));
+  const list = document.getElementById('history-list');
+  if (!snap.exists()) {
+    list.innerHTML = '<div class="history-empty">Aucune connexion enregistrée.</div>';
+    return;
+  }
+  const entries = Object.values(snap.val()).reverse(); // most recent first
+  list.innerHTML = entries.slice(0, 50).map(e => `
+    <div class="history-row">
+      <div class="history-user">${e.username}</div>
+      <span class="history-role ${e.role}">${e.role === 'admin' ? '🔑 Admin' : '👁️ Lecteur'}</span>
+      <div class="history-time">🕐 ${e.date} à ${e.time}</div>
+    </div>`).join('');
+};
+
+window.closeHistory = function() {
+  document.getElementById('history-overlay').classList.remove('open');
+};
+
+window.clearHistory = async function() {
+  await remove(ref(db, 'loginHistory'));
+  document.getElementById('history-list').innerHTML = '<div class="history-empty">Historique effacé.</div>';
+  toast('🗑️ Historique effacé.', 'danger');
+};
+
+async function logLogin(username, role) {
+  try {
+    const now = new Date();
+    const date = now.toLocaleDateString('fr-FR');
+    const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const id = 'l' + Date.now();
+    await set(ref(db, 'loginHistory/' + id), { username, role, date, time });
+  } catch(e) { console.error('logLogin error', e); }
+}
 
 boot();
 </script>
