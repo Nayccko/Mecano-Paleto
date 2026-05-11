@@ -15,8 +15,41 @@
   .loading-text { color: #64748b; font-size: 0.9rem; }
 
   /* LOGIN */
-  #login-page { display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
-  .login-card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 380px; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+  #login-page {
+    display: none; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px;
+    background-color: #060c14;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Animated gears background */
+  #login-page canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0.18;
+  }
+  /* Dark gradient overlay */
+  #login-page::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 60%, rgba(37,99,235,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 75% 25%, rgba(30,58,92,0.25) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 100%, rgba(15,23,42,0.8) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .login-card {
+    position: relative; z-index: 1;
+    background: rgba(10,18,30,0.82);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(59,130,246,0.18);
+    box-shadow: 0 0 60px rgba(37,99,235,0.12), 0 30px 80px rgba(0,0,0,0.7);
+    border: 1px solid #1e3a5f;
+    border-radius: 16px; padding: 36px 32px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(59,130,246,0.1);
+    position: relative; z-index: 1;
+  }
   .login-logo { text-align: center; margin-bottom: 24px; }
   .login-logo .icon { font-size: 2.6rem; }
   .login-logo h1 { font-size: 1.3rem; font-weight: 700; color: #f1f5f9; margin-top: 8px; }
@@ -658,7 +691,7 @@ function renderUserList() {
       </div>
       <span class="role-pill ${a.role}" style="font-size:0.7rem;padding:2px 8px">${a.role}</span>
       <button class="btn-del-user" onclick="removeUser('${a.id}')"
-        ${a.username === currentUser.username ? 'disabled title="Impossible de supprimer votre propre compte"' : ''}>
+        ${a.username === currentUser.username ? 'disabled' : ''}>
         Supprimer
       </button>
     </div>`).join('');
@@ -903,7 +936,114 @@ async function logLogin(username, role) {
   } catch(e) { console.error('logLogin error', e); }
 }
 
-boot();
+// ── BACKGROUND CANVAS ANIMATION ──────────────────────
+function initBackground() {
+  const page = document.getElementById('login-page');
+  const canvas = document.createElement('canvas');
+  page.insertBefore(canvas, page.firstChild);
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Define gears
+  const gears = [
+    { x: 0.12, y: 0.20, r: 80,  teeth: 12, speed: 0.003,  angle: 0, color: '#1e40af' },
+    { x: 0.85, y: 0.15, r: 110, teeth: 16, speed: -0.002, angle: 0, color: '#1e3a5f' },
+    { x: 0.78, y: 0.42, r: 55,  teeth: 8,  speed: 0.004,  angle: 0, color: '#2563eb' },
+    { x: 0.08, y: 0.72, r: 90,  teeth: 13, speed: -0.003, angle: 0, color: '#1e40af' },
+    { x: 0.50, y: 0.85, r: 65,  teeth: 10, speed: 0.0035, angle: 0, color: '#1e3a5f' },
+    { x: 0.90, y: 0.78, r: 70,  teeth: 10, speed: -0.003, angle: 0, color: '#1d4ed8' },
+    { x: 0.35, y: 0.10, r: 45,  teeth: 7,  speed: 0.005,  angle: 0, color: '#2563eb' },
+  ];
+
+  // Wrenches
+  const wrenches = [
+    { x: 0.65, y: 0.30, len: 140, angle: -0.4, color: '#1e3a5f' },
+    { x: 0.22, y: 0.55, len: 110, angle: 1.1,  color: '#1e3a5f' },
+    { x: 0.75, y: 0.65, len: 120, angle: 2.3,  color: '#1e3a5f' },
+  ];
+
+  function drawGear(g, w, h) {
+    const x = g.x * w, y = g.y * h, r = g.r, teeth = g.teeth;
+    const toothH = r * 0.28, innerR = r * 0.68;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(g.angle);
+    ctx.strokeStyle = g.color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < teeth; i++) {
+      const a1 = (i / teeth) * Math.PI * 2;
+      const a2 = ((i + 0.4) / teeth) * Math.PI * 2;
+      const a3 = ((i + 0.6) / teeth) * Math.PI * 2;
+      const a4 = ((i + 1) / teeth) * Math.PI * 2;
+      ctx.lineTo(Math.cos(a1) * innerR, Math.sin(a1) * innerR);
+      ctx.lineTo(Math.cos(a2) * (r + toothH), Math.sin(a2) * (r + toothH));
+      ctx.lineTo(Math.cos(a3) * (r + toothH), Math.sin(a3) * (r + toothH));
+      ctx.lineTo(Math.cos(a4) * innerR, Math.sin(a4) * innerR);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    // Inner circles
+    ctx.beginPath(); ctx.arc(0, 0, innerR * 0.75, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, innerR * 0.2,  0, Math.PI * 2); ctx.stroke();
+    // Spokes
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * innerR * 0.22, Math.sin(a) * innerR * 0.22);
+      ctx.lineTo(Math.cos(a) * innerR * 0.72, Math.sin(a) * innerR * 0.72);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawWrench(wr, w, h) {
+    const x = wr.x * w, y = wr.y * h;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(wr.angle);
+    ctx.strokeStyle = wr.color;
+    ctx.lineWidth = 1.5;
+    // Handle
+    ctx.beginPath();
+    ctx.moveTo(0, -wr.len * 0.3);
+    ctx.lineTo(0, wr.len * 0.5);
+    ctx.stroke();
+    // Head circle
+    ctx.beginPath(); ctx.arc(0, -wr.len * 0.3, 22, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, -wr.len * 0.3, 12, 0, Math.PI * 2); ctx.stroke();
+    // Bottom fork
+    ctx.beginPath();
+    ctx.moveTo(-12, wr.len * 0.5);
+    ctx.lineTo(12, wr.len * 0.5);
+    ctx.moveTo(-12, wr.len * 0.5);
+    ctx.lineTo(-16, wr.len * 0.5 + 20);
+    ctx.moveTo(12, wr.len * 0.5);
+    ctx.lineTo(16, wr.len * 0.5 + 20);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function animate() {
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    gears.forEach(g => {
+      g.angle += g.speed;
+      drawGear(g, w, h);
+    });
+    wrenches.forEach(wr => drawWrench(wr, w, h));
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+boot().then(() => initBackground());
 </script>
 </body>
 </html>
